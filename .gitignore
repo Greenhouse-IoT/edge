@@ -1,0 +1,4 @@
+# ... otros ignores como .venv, __pycache__, etc.
+
+# Ignorar archivos de variables de entorno locales
+.env

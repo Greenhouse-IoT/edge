@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  greenhouse-edge:
+    build: .
+    container_name: my-greenhouse-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - ./.env # Docker Compose leerá este archivo automáticamente

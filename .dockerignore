@@ -1,0 +1,21 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Base de datos local
+greenhouse.db
+
+# Entornos virtuales
+.venv
+venv
+env
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
