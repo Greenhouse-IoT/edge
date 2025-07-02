@@ -46,8 +46,8 @@ class SensorProcessingService:
         # 4. Ejecutar algoritmo de decisión para obtener acciones por parámetro
         actions = self.domain_service.get_parameter_actions(current_crop.phase, reading)
         
-        # 5. Determinar si el servo debe activarse (si alguna acción es '+')
-        should_activate_servo = "+" in actions.values()
+        # 5. Determinar si el servo debe activarse (si alguna acción es '+' o '-)
+        should_activate_servo = any(action in ['+', '-'] for action in actions.values())
 
         # 6. Enviar comando (lecturas + acciones detalladas) al ESP32 del actuador
         self.actuator_client.send_command(reading, actions, should_activate_servo)

@@ -7,12 +7,28 @@ class GreenhouseDomainService:
     lecturas de los sensores contra los umbrales definidos para cada fase del cultivo.
     """
 
-    # Umbrales para cada fase del cultivo, según lo especificado.
+    # Umbrales para cada fase del cultivo, con valores mínimos y máximos.
     THRESHOLDS = {
-        "incubation": {"temp_max": 25, "humidity_max": 85, "co2_max": 800},
-        "casing": {"temp_max": 23, "humidity_max": 90, "co2_max": 1000},
-        "induction": {"temp_max": 21, "humidity_max": 95, "co2_max": 1200},
-        "harvest": {"temp_max": 22, "humidity_max": 80, "co2_max": 1000}
+        "incubation": {
+            "temp_min": 21, "temp_max": 27,
+            "humidity_min": 80, "humidity_max": 95,
+            "co2_min": 5000, "co2_max": 10000
+        },
+        "casing": {
+            "temp_min": 21, "temp_max": 27,
+            "humidity_min": 80, "humidity_max": 95,
+            "co2_min": 5000, "co2_max": 10000
+        },
+        "induction": {
+            "temp_min": 15, "temp_max": 21,
+            "humidity_min": 80, "humidity_max": 95,
+            "co2_min": 800, "co2_max": 1200
+        },
+        "harvest": {
+            "temp_min": 16, "temp_max": 22,
+            "humidity_min": 80, "humidity_max": 95,
+            "co2_min": 800, "co2_max": 1100
+        }
     }
 
     def get_parameter_actions(self, phase: str, reading: SensorReading) -> Dict[str, str]:
@@ -25,13 +41,14 @@ class GreenhouseDomainService:
             reading (SensorReading): El objeto con las lecturas actuales de los sensores.
 
         Returns:
-            dict: Un diccionario con la acción ('+' o '-') para cada parámetro.
-                  Ej: {"temperature": "+", "humidity": "-", "co2": "-"}
+            dict: Un diccionario con la acción ('+', '-', o '=') para cada parámetro.
+                  '+' = por debajo del mínimo, '-' = por encima del máximo, '=' = dentro del rango
+                  Ej: {"temperature": "+", "humidity": "=", "co2": "-"}
         """
         actions = {
-            "temperature": "-",
-            "humidity": "-",
-            "co2": "-"
+            "temperature": "=",
+            "humidity": "=",
+            "co2": "="
         }
         reasons = []
 
@@ -44,21 +61,37 @@ class GreenhouseDomainService:
             print(f"WARN: No se encontraron umbrales para la fase '{phase}'. No se tomará ninguna acción.")
             return actions
 
-        # Comprobar cada parámetro contra su umbral máximo.
-        if reading.temperature > current_thresholds["temp_max"]:
+        # Evaluar temperatura
+        if reading.temperature < current_thresholds["temp_min"]:
             actions["temperature"] = "+"
-            reasons.append(f"Temperatura ({reading.temperature}°C) > {current_thresholds['temp_max']}°C")
-        
-        if reading.humidity > current_thresholds["humidity_max"]:
+            reasons.append(f"Temperatura ({reading.temperature}°C) < {current_thresholds['temp_min']}°C (mínimo)")
+        elif reading.temperature > current_thresholds["temp_max"]:
+            actions["temperature"] = "-"
+            reasons.append(f"Temperatura ({reading.temperature}°C) > {current_thresholds['temp_max']}°C (máximo)")
+        else:
+            reasons.append(f"Temperatura ({reading.temperature}°C) dentro del rango [{current_thresholds['temp_min']}-{current_thresholds['temp_max']}°C]")
+
+        # Evaluar humedad
+        if reading.humidity < current_thresholds["humidity_min"]:
             actions["humidity"] = "+"
-            reasons.append(f"Humedad ({reading.humidity}%) > {current_thresholds['humidity_max']}%")
+            reasons.append(f"Humedad ({reading.humidity}%) < {current_thresholds['humidity_min']}% (mínimo)")
+        elif reading.humidity > current_thresholds["humidity_max"]:
+            actions["humidity"] = "-"
+            reasons.append(f"Humedad ({reading.humidity}%) > {current_thresholds['humidity_max']}% (máximo)")
+        else:
+            reasons.append(f"Humedad ({reading.humidity}%) dentro del rango [{current_thresholds['humidity_min']}-{current_thresholds['humidity_max']}%]")
 
-        if reading.co2 > current_thresholds["co2_max"]:
+        # Evaluar CO2
+        if reading.co2 < current_thresholds["co2_min"]:
             actions["co2"] = "+"
-            reasons.append(f"CO2 ({reading.co2} ppm) > {current_thresholds['co2_max']} ppm")
+            reasons.append(f"CO2 ({reading.co2} ppm) < {current_thresholds['co2_min']} ppm (mínimo)")
+        elif reading.co2 > current_thresholds["co2_max"]:
+            actions["co2"] = "-"
+            reasons.append(f"CO2 ({reading.co2} ppm) > {current_thresholds['co2_max']} ppm (máximo)")
+        else:
+            reasons.append(f"CO2 ({reading.co2} ppm) dentro del rango [{current_thresholds['co2_min']}-{current_thresholds['co2_max']} ppm]")
 
-        # Si hubo alguna razón para activar, se imprime un log informativo.
-        if reasons:
-            print(f"INFO: Razones para la activación en fase '{phase}': {', '.join(reasons)}")
+        # Log informativo con todas las evaluaciones
+        print(f"INFO: Evaluación para la fase '{phase}': {', '.join(reasons)}")
             
         return actions
